@@ -1,5 +1,5 @@
 // RapidAPI Jobs API Integration (via Backend Proxy)
-const BACKEND_URL = 'http://localhost:5002';
+export const BACKEND_URL = 'http://localhost:5002';
 
 export interface JobListing {
     id: string;

@@ -1,14 +1,15 @@
 import { Link, useLocation } from "react-router-dom";
-import { 
-  LayoutDashboard, 
-  Briefcase, 
-  BookOpen, 
-  MessageCircle, 
+import {
+  LayoutDashboard,
+  Briefcase,
+  BookOpen,
+  MessageCircle,
   User,
   ChevronLeft,
   Plus,
   Sparkles,
-  GraduationCap
+  GraduationCap,
+  Bot
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,7 @@ const navigation = [
   { name: "Internships", href: "/internships", icon: Briefcase },
   { name: "AI Matching", href: "/internship-matching", icon: Sparkles },
   { name: "Resources", href: "/resources", icon: BookOpen },
-  { name: "CampusBot", href: "/chat", icon: MessageCircle },
+  { name: "AI Mock Interviewer", href: "/interview", icon: Bot },
   { name: "My Profile", href: "/profile", icon: User },
 ];
 
@@ -65,9 +66,9 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
       {/* Navigation */}
       <nav className="flex-1 py-6 px-3 space-y-1">
         {navigation.map((item) => {
-          const isActive = location.pathname === item.href || 
+          const isActive = location.pathname === item.href ||
             (item.href !== "/" && location.pathname.startsWith(item.href));
-          
+
           return (
             <Link
               key={item.name}

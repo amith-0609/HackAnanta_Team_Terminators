@@ -1,4 +1,4 @@
-import { Bell, Search, LogIn, LogOut, User as UserIcon, LayoutDashboard, Briefcase, Sparkles, BookOpen, MessageCircle } from "lucide-react";
+import { Bell, Search, LogIn, LogOut, User as UserIcon, LayoutDashboard, Briefcase, Sparkles, BookOpen, MessageCircle, Bot } from "lucide-react";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,7 +44,7 @@ export function Header({ onMenuClick }: HeaderProps) {
     { name: "Internships", href: "/internships", icon: Briefcase },
     { name: "Matching", href: "/internship-matching", icon: Sparkles },
     { name: "Resources", href: "/resources", icon: BookOpen },
-    { name: "Chat", href: "/chat", icon: MessageCircle },
+    { name: "AI Mock Interviewer", href: "/interview", icon: Bot },
   ];
 
   return (

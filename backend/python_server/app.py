@@ -4,6 +4,7 @@ import sys
 import os
 import pandas as pd
 import json
+from dotenv import load_dotenv
 
 # Add JobSpy to path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -15,6 +16,21 @@ try:
 except ImportError as e:
     print(f"Error importing JobSpy: {e}")
     scrape_jobs = None
+
+# Load environment variables using python-dotenv
+try:
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    env_path = os.path.join(current_dir, '..', '.env')
+    print(f"Loading .env from: {env_path}")
+    load_dotenv(env_path)
+    
+    if os.environ.get('GEMINI_API_KEY'):
+        print("✅ GEMINI_API_KEY loaded successfully")
+    else:
+        print("❌ GEMINI_API_KEY not found in environment")
+        
+except Exception as e:
+    print(f"Error loading .env: {e}")
 
 app = Flask(__name__)
 CORS(app)
@@ -296,10 +312,152 @@ def parse_resume():
         print(f"❌ Error parsing resume: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+import time
+import google.generativeai as genai
+from collections import deque
+
+# ... existing code ...
+
+# --- AI Interviewer Logic ---
+
+class RateLimiter:
+    def __init__(self, max_requests, period):
+        self.max_requests = max_requests
+        self.period = period
+        self.requests = deque()
+
+    def allow_request(self):
+        now = time.time()
+        # Remove old requests
+        while self.requests and self.requests[0] < now - self.period:
+            self.requests.popleft()
+        
+        if len(self.requests) < self.max_requests:
+            self.requests.append(now)
+            return True
+        return False
+
+class GeminiClient:
+    def __init__(self):
+        self.keys = []
+        
+        # Load keys from env
+        primary = os.environ.get('GEMINI_API_KEY')
+        backup = os.environ.get('GEMINI_API_KEY_BACKUP')
+        
+        if primary: self.keys.append(primary)
+        if backup: self.keys.append(backup)
+        
+        self.current_key_index = 0
+        self.rate_limiter = RateLimiter(max_requests=10, period=60) # 10 requests per minute
+        
+        if self.keys:
+            self._configure(self.keys[0])
+        else:
+            print("Warning: No Gemini API keys found. AI features will be disabled.")
+
+    def _configure(self, key):
+        genai.configure(api_key=key)
+        self.model = genai.GenerativeModel('gemini-2.0-flash')
+        print(f"Configured Gemini with key ending in ...{key[-4:]}")
+
+    def _rotate_key(self):
+        if len(self.keys) <= 1:
+            return False
+        
+        self.current_key_index = (self.current_key_index + 1) % len(self.keys)
+        new_key = self.keys[self.current_key_index]
+        new_key = self.keys[self.current_key_index]
+        print(f"Rotating to API Key #{self.current_key_index + 1}")
+        self._configure(new_key)
+        return True
+
+    def generate_response(self, prompt):
+        if not self.keys:
+            return "AI configuration missing. Please add an API key."
+
+        if not self.rate_limiter.allow_request():
+            return "Rate limit exceeded. Please wait a moment."
+
+        try:
+            response = self.model.generate_content(prompt)
+            return response.text
+        except Exception as e:
+            print(f"Gemini Error: {e}")
+            # Check for quota error (429) or permission denied (403)
+            if "429" in str(e) or "quota" in str(e).lower():
+                if self._rotate_key():
+                    return self.generate_response(prompt) # Retry with new key
+                else:
+                    return "API Quota exceeded. Please try again later."
+            return "Sorry, I encountered an error processing your request."
+
+# Initialize AI Client
+ai_client = GeminiClient()
+
+@app.route('/api/interview/start', methods=['POST'])
+def start_interview():
+    data = request.json
+    role = data.get('role', 'Software Engineer')
+    topic = data.get('topic', 'General')
+    difficulty = data.get('difficulty', 'Medium')
+    
+    prompt = f"""
+    You are an expert technical interviewer conducting a mock interview for a {role} position.
+    The topic is {topic} and the difficulty level is {difficulty}.
+    
+    Start the interview by introducing yourself briefly and asking the first technical question.
+    Do not ask multiple questions at once. Keep your response concise and professional.
+    IMPORTANT: Do not use markdown formatting (no asterisks, no bold). Output plain text only.
+    """
+    
+    response = ai_client.generate_response(prompt)
+    return jsonify({'message': response})
+
+@app.route('/api/interview/chat', methods=['POST'])
+def chat_interview():
+    data = request.json
+    message = data.get('message')
+    history = data.get('history', [])
+    
+    # Construct prompt from history
+    # We limit history to last 10 turns to save context window
+    context = "You are a technical interviewer. The user is the candidate.\n"
+    for turn in history[-10:]:
+        role = "Candidate" if turn['sender'] == 'user' else "Interviewer"
+        context += f"{role}: {turn['text']}\n"
+    
+    context += f"Candidate: {message}\n"
+    context += "Interviewer (Provide feedback on the answer if necessary, then ask the next follow-up question. Be encouraging but strict on technical accuracy. IMPORTANT: Do not use markdown formatting. Output plain text only.):"
+    
+    response = ai_client.generate_response(context)
+    return jsonify({'message': response})
+
+@app.route('/api/chat', methods=['POST'])
+def general_chat():
+    data = request.json
+    message = data.get('message')
+    history = data.get('history', [])
+    
+    context = "You are CampusBot, a helpful AI assistant for students. You help with internships, interview prep, and general campus queries.\n"
+    for turn in history[-10:]:
+        role = "Student" if turn['sender'] == 'user' else "CampusBot"
+        context += f"{role}: {turn['text']}\n"
+    
+    context += f"Student: {message}\n"
+    context += "CampusBot:"
+    
+    response = ai_client.generate_response(context)
+    return jsonify({'message': response})
+
 @app.route('/health', methods=['GET'])
 def health():
     return jsonify({'status': 'healthy', 'service': 'Job Scraper API'})
 
 if __name__ == '__main__':
-    print("🚀 Starting Job Scraper server on http://localhost:5002")
+    print("Starting Job Scraper server on http://localhost:5002")
+    # Load env vars manually if python-dotenv not used
+    # But we wrote to backend/.env, so we need to load it
+    # load_dotenv moved to top
+        
     app.run(host='0.0.0.0', port=5002, debug=True)
