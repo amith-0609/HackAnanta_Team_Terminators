@@ -1,5 +1,5 @@
 // RapidAPI Jobs API Integration (via Backend Proxy)
-export const BACKEND_URL = 'http://localhost:5002';
+const BACKEND_URL = 'http://localhost:5001';
 
 export interface JobListing {
     id: string;
@@ -35,7 +35,7 @@ export interface SearchParams {
 export async function fetchJobs(params: SearchParams = {}): Promise<JobListing[]> {
     const {
         query = 'internship',
-        location = 'Remote',
+        location = 'Worldwide',
         experienceLevels = 'intern;entry;associate',
         workplaceTypes = 'remote;hybrid;onSite',
         datePosted = 'month',
@@ -81,9 +81,7 @@ function mapApiResponseToJobs(apiResponse: any): JobListing[] {
         const tags = extractTagsFromJob(job);
 
         // Determine if job is new (posted within last 7 days)
-        // Handle both camelCase and snake_case
-        const datePosted = job.datePosted || job.date_posted || new Date().toISOString();
-        const isNew = isJobNew(datePosted);
+        const isNew = isJobNew(job.datePosted);
 
         // Calculate a base match score (can be refined with user preferences later)
         const match = calculateBaseMatch(job);
@@ -96,11 +94,11 @@ function mapApiResponseToJobs(apiResponse: any): JobListing[] {
             role: job.title || 'Untitled Position', // Backwards compatibility
             company: job.company || 'Company',
             location: job.location || 'Location not specified',
-            datePosted: datePosted,
+            datePosted: job.datePosted || new Date().toISOString(),
             salary: job.salary || 'Not specified',
             description: job.description || job.snippet || 'No description available',
-            employmentType: job.employmentType || job.employment_type || 'Internship',
-            experienceLevel: job.experienceLevel || job.experience_level || 'Entry Level',
+            employmentType: job.employmentType || 'Internship',
+            experienceLevel: job.experienceLevel || 'Entry Level',
             url: job.job_url || job.url || job.jobUrl || '#',
             companyLogo: logo,
             logo: logo, // Backwards compatibility
@@ -216,32 +214,4 @@ export async function getInternshipsByField(field: string): Promise<JobListing[]
         employmentTypes: 'intern',
         datePosted: 'month',
     });
-}
-
-/**
- * Parse resume to extract skills
- */
-export async function parseResume(file: File): Promise<{ skills: string[], text: string }> {
-    const formData = new FormData();
-    formData.append('resume', file);
-
-    try {
-        const response = await fetch(`${BACKEND_URL}/api/parse-resume`, {
-            method: 'POST',
-            body: formData,
-        });
-
-        if (!response.ok) {
-            throw new Error(`Resume parsing failed: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        return {
-            skills: data.skills || [],
-            text: data.text_preview || ''
-        };
-    } catch (error) {
-        console.error('Error parsing resume:', error);
-        throw error;
-    }
 }

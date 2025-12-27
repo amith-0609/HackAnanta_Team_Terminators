@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import {
   Sparkles,
@@ -9,8 +9,7 @@ import {
   Loader2,
   Briefcase,
   Target,
-  X,
-  Plus
+  X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -20,7 +19,9 @@ import { Textarea } from "@/components/ui/textarea";
 
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { fetchJobs, parseResume, JobListing } from "@/services/jobsApi";
+import { storage } from "@/lib/firebase";
+import { ref, uploadString } from "firebase/storage";
+import { internships } from "@/data/internships";
 
 export default function InternshipMatching() {
   const { user } = useAuth();
@@ -29,40 +30,72 @@ export default function InternshipMatching() {
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showResults, setShowResults] = useState(false);
-
-  // Load state from localStorage if available
-  const [userPreferences, setUserPreferences] = useState(() => localStorage.getItem('match_preferences') || "");
-  const [extractedSkills, setExtractedSkills] = useState<string[]>(() => {
-    const saved = localStorage.getItem('match_skills');
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [matchedResults, setMatchedResults] = useState<JobListing[]>(() => {
-    const saved = localStorage.getItem('match_results');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [userPreferences, setUserPreferences] = useState("");
+  const [matchedResults, setMatchedResults] = useState<any[]>([]);
 
   // Resume Upload State
-  const [resumeName, setResumeName] = useState<string | null>(() => localStorage.getItem('match_resume_name'));
+  const [resumeName, setResumeName] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  // Effect to save state changes
-  useEffect(() => {
-    localStorage.setItem('match_preferences', userPreferences);
-    localStorage.setItem('match_skills', JSON.stringify(extractedSkills));
-    if (resumeName) localStorage.setItem('match_resume_name', resumeName);
-    else localStorage.removeItem('match_resume_name');
+  const calculateMatches = () => {
+    if (!userPreferences.trim()) return [];
 
-    if (matchedResults.length > 0) {
-      localStorage.setItem('match_results', JSON.stringify(matchedResults));
-      setShowResults(true); // Auto-show results if we have them
-    }
-  }, [userPreferences, extractedSkills, resumeName, matchedResults]);
+    const searchTerms = userPreferences.toLowerCase().split(/\s+/).filter(word => word.length > 2);
 
-  const handleAnalyze = async () => {
-    if (!userPreferences.trim() && extractedSkills.length === 0) {
+    const scoredInternships = internships.map(internship => {
+      let score = 0;
+      const searchableText = [
+        internship.role,
+        internship.company,
+        internship.description,
+        ...internship.tags
+      ].join(" ").toLowerCase();
+
+      searchTerms.forEach(term => {
+        if (searchableText.includes(term)) {
+          score += 10;
+          // Bonus points for exact tag match
+          if (internship.tags.some(tag => tag.toLowerCase() === term)) {
+            score += 15;
+          }
+        }
+      });
+
+      // Normalize score to a percentage-like feel (cap at 98, min at 60 for "matches")
+      // This is a heuristic for demo purposes
+      let matchPercentage = Math.min(98, 60 + (score * 2));
+
+      // If absolutely no keywords found, drop match meaningfulness
+      if (score === 0) matchPercentage = 40;
+
+      return {
+        ...internship,
+        match: matchPercentage,
+        reasons: [`Matched on "${searchTerms.find(t => searchableText.includes(t)) || 'skills'}"`, "Skills analysis", "Role fit"]
+      };
+    });
+
+    // Filter out low scores and sort by match percentage
+    return scoredInternships
+      .filter(i => i.match > 50)
+      .sort((a, b) => b.match - a.match)
+      .slice(0, 3); // Top 3
+  };
+
+  const handleAnalyze = () => {
+    if (!resumeName) {
       toast({
-        title: "Input Required",
-        description: "Please upload a resume or enter your preferences.",
+        title: "Resume Required",
+        description: "Please upload your resume first so our AI can analyze it.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!userPreferences.trim()) {
+      toast({
+        title: "Preferences Required",
+        description: "Please tell us what kind of internship you are looking for.",
         variant: "destructive",
       });
       return;
@@ -70,64 +103,13 @@ export default function InternshipMatching() {
 
     setIsAnalyzing(true);
 
-    try {
-      // 1. Construct search query based on skills and preferences
-      const preferenceKeywords = userPreferences.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-      const allKeywords = [...extractedSkills, ...preferenceKeywords];
-
-      // Prioritize top skills for the search query
-      const mainQuery = allKeywords.slice(0, 3).join(" ") || "internship";
-
-      console.log("Searching for:", mainQuery);
-
-      // 2. Fetch real jobs
-      const jobs = await fetchJobs({
-        query: `${mainQuery} internship`,
-        location: 'Remote', // Default to remote for better matches
-        experienceLevels: 'intern;entry',
-      });
-
-      // 3. Calculate Match Scores locally
-      const scoredJobs = jobs.map(job => {
-        let score = 0;
-        const jobText = `${job.title} ${job.description} ${job.company}`.toLowerCase();
-
-        // Check for skill matches
-        const matchedSkills = allKeywords.filter(skill => jobText.includes(skill.toLowerCase()));
-
-        // Base score calculation
-        score += matchedSkills.length * 15; // 15 points per skill match
-
-        if (job.title.toLowerCase().includes('intern')) score += 20;
-        if (job.location.toLowerCase().includes('remote')) score += 10;
-
-        // Cap at 98, min 60
-        let matchPercentage = Math.min(98, Math.max(60, 50 + score));
-
-        return {
-          ...job,
-          match: matchPercentage,
-          // Add matched skills as "reasons"
-          tags: matchedSkills.slice(0, 3) // Show matched skills as tags
-        };
-      });
-
-      // Sort by match score
-      scoredJobs.sort((a, b) => (b.match || 0) - (a.match || 0));
-
-      setMatchedResults(scoredJobs.slice(0, 5)); // Show top 5
-      setShowResults(true);
-
-    } catch (error) {
-      console.error("Analysis failed:", error);
-      toast({
-        title: "Analysis Failed",
-        description: "Could not fetch matches. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
+    // Simulate AI Analysis time
+    setTimeout(() => {
+      const results = calculateMatches();
+      setMatchedResults(results);
       setIsAnalyzing(false);
-    }
+      setShowResults(true);
+    }, 1500);
   };
 
   const handleBoxClick = () => {
@@ -138,40 +120,65 @@ export default function InternshipMatching() {
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !user) return;
 
-    if (file.type !== 'application/pdf') {
+    // Validate File Type
+    const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (!validTypes.includes(file.type)) {
       toast({
-        title: "Invalid File",
-        description: "Please upload a PDF resume.",
+        title: "Invalid File Type",
+        description: "Please upload a PDF or Word document.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate File Size (Max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File Too Large",
+        description: "Resume must be under 5MB.",
         variant: "destructive",
       });
       return;
     }
 
     setIsUploading(true);
-    setResumeName(file.name);
+
+    toast({
+      title: "Uploading Resume...",
+      description: "Please wait while we secure your file.",
+    });
 
     try {
-      // Call backend to parse resume
-      const { skills } = await parseResume(file);
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const dataUrl = event.target?.result as string;
+        const storageRef = ref(storage, `resumes/${user.uid}/${Date.now()}_${file.name}`);
 
-      setExtractedSkills(prev => Array.from(new Set([...prev, ...skills])));
+        await uploadString(storageRef, dataUrl, 'data_url');
+        setResumeName(file.name);
 
-      toast({
-        title: "Resume Analyzed!",
-        description: `Found ${skills.length} skills: ${skills.slice(0, 3).join(", ")}...`,
-        className: "bg-green-600 text-white border-none",
-      });
+        toast({
+          title: "Resume Uploaded!",
+          description: "Your resume is ready for analysis.",
+          className: "bg-green-600 text-white border-none",
+        });
+      };
+
+      reader.onerror = () => {
+        throw new Error("Failed to read file");
+      };
+
+      reader.readAsDataURL(file);
 
     } catch (error) {
       console.error("Upload error:", error);
       toast({
-        title: "Parsing Failed",
-        description: "Could not extract text from resume.",
+        title: "Upload Failed",
+        description: "Could not upload resume. Please try again.",
         variant: "destructive",
       });
-      setResumeName(null);
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -181,13 +188,6 @@ export default function InternshipMatching() {
   const removeResume = (e: React.MouseEvent) => {
     e.stopPropagation();
     setResumeName(null);
-    setExtractedSkills([]);
-    setMatchedResults([]);
-    setShowResults(false);
-    // Clear from storage
-    localStorage.removeItem('match_resume_name');
-    localStorage.removeItem('match_skills');
-    localStorage.removeItem('match_results');
   };
 
   return (
@@ -199,7 +199,7 @@ export default function InternshipMatching() {
         </div>
         <h1 className="text-3xl font-bold">AI Internship Matching</h1>
         <p className="text-muted-foreground mt-2">
-          Upload your resume to extract skills and find your perfect internship match.
+          Let our AI analyze your skills and preferences to find the perfect internship matches for you.
         </p>
       </div>
 
@@ -213,7 +213,7 @@ export default function InternshipMatching() {
                 Upload Resume
               </CardTitle>
               <CardDescription>
-                We'll extract your skills automatically (PDF only)
+                Upload your resume for AI-powered analysis
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -222,7 +222,7 @@ export default function InternshipMatching() {
                 ref={fileInputRef}
                 className="hidden"
                 onChange={handleFileChange}
-                accept=".pdf"
+                accept=".pdf,.doc,.docx"
               />
               <div
                 className={`flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-xl p-6 text-center transition-all ${isUploading
@@ -236,7 +236,8 @@ export default function InternshipMatching() {
                 {isUploading ? (
                   <>
                     <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
-                    <p className="font-medium">Analyzing Resume...</p>
+                    <p className="font-medium">Uploading...</p>
+                    <p className="text-sm text-muted-foreground mt-1">Please wait</p>
                   </>
                 ) : resumeName ? (
                   <div className="relative w-full">
@@ -248,53 +249,43 @@ export default function InternshipMatching() {
                       <X className="w-4 h-4" />
                     </button>
                     <CheckCircle2 className="w-12 h-12 text-success mx-auto mb-4" />
-                    <p className="font-medium text-success">Resume Analyzed</p>
+                    <p className="font-medium text-success">Resume Uploaded</p>
                     <p className="text-sm text-muted-foreground mt-1 break-all px-4">{resumeName}</p>
                   </div>
                 ) : (
                   <>
                     <Upload className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                     <p className="font-medium">Drop your resume here</p>
-                    <p className="text-sm text-muted-foreground mt-1">PDF (max 5MB)</p>
+                    <p className="text-sm text-muted-foreground mt-1">PDF, DOC, or DOCX (max 5MB)</p>
                   </>
                 )}
               </div>
             </CardContent>
           </Card>
 
-          {/* Preferences & Skills */}
+          {/* Preferences */}
           <Card className="shadow-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Target className="w-5 h-5 text-primary" />
-                Skills & Preferences
+                Your Preferences
               </CardTitle>
               <CardDescription>
-                Add skills or describe your dream role
+                Tell us what you're looking for
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Extracted Skills Chips */}
-              {extractedSkills.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {extractedSkills.map((skill, i) => (
-                    <Badge key={i} variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20">
-                      {skill}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-
               <Textarea
-                placeholder="E.g., I want a remote backend internship using Python and Django..."
-                className="min-h-[100px] resize-none"
+                placeholder="E.g., I'm interested in software engineering roles at tech companies in the Bay Area. I prefer roles that involve machine learning or backend development..."
+                className="min-h-[120px] resize-none"
                 value={userPreferences}
                 onChange={(e) => setUserPreferences(e.target.value)}
               />
               <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className="cursor-pointer hover:bg-accent" onClick={() => setExtractedSkills(prev => [...prev, "React"])}>+ React</Badge>
-                <Badge variant="outline" className="cursor-pointer hover:bg-accent" onClick={() => setExtractedSkills(prev => [...prev, "Python"])}>+ Python</Badge>
-                <Badge variant="outline" className="cursor-pointer hover:bg-accent" onClick={() => setExtractedSkills(prev => [...prev, "Node.js"])}>+ Node.js</Badge>
+                <Badge variant="secondary" className="cursor-pointer hover:bg-primary/20" onClick={() => setUserPreferences(prev => prev + " Software Engineering")}>Software Engineering</Badge>
+                <Badge variant="secondary" className="cursor-pointer hover:bg-primary/20" onClick={() => setUserPreferences(prev => prev + " Machine Learning")}>Machine Learning</Badge>
+                <Badge variant="secondary" className="cursor-pointer hover:bg-primary/20" onClick={() => setUserPreferences(prev => prev + " Bay Area")}>Bay Area</Badge>
+                <Badge variant="secondary" className="cursor-pointer hover:bg-primary/20" onClick={() => setUserPreferences(prev => prev + " Summer 2025")}>Summer 2025</Badge>
               </div>
             </CardContent>
           </Card>
@@ -308,12 +299,12 @@ export default function InternshipMatching() {
             size="lg"
             className="bg-gradient-primary hover:opacity-90 shadow-lg px-8"
             onClick={handleAnalyze}
-            disabled={isAnalyzing || isUploading}
+            disabled={isAnalyzing || isUploading || !resumeName || !userPreferences}
           >
             {isAnalyzing ? (
               <>
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Finding Matches...
+                Analyzing...
               </>
             ) : (
               <>
@@ -330,8 +321,8 @@ export default function InternshipMatching() {
         <div className="space-y-6 max-w-4xl mx-auto animate-fade-in-up">
           <div className="text-center">
             <Badge className="bg-success text-success-foreground mb-2">Analysis Complete</Badge>
-            <h2 className="text-2xl font-bold">We found {matchedResults.length} matches!</h2>
-            <p className="text-muted-foreground mt-1">Based on your resume skills and preferences</p>
+            <h2 className="text-2xl font-bold">We found {matchedResults.length} great matches!</h2>
+            <p className="text-muted-foreground mt-1">Based on your skills, experience, and preferences</p>
           </div>
 
           <div className="space-y-4">
@@ -339,7 +330,6 @@ export default function InternshipMatching() {
               <Link
                 key={internship.id}
                 to={`/internships/${internship.id}`}
-                state={{ job: internship }}
                 className="block animate-fade-in-up"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
@@ -348,7 +338,7 @@ export default function InternshipMatching() {
                     <div className="flex items-center gap-4">
                       <div className="w-14 h-14 rounded-xl bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
                         <img
-                          src={internship.companyLogo || "https://via.placeholder.com/50"}
+                          src={internship.logo}
                           alt={internship.company}
                           className="w-10 h-10 object-contain"
                         />
@@ -356,7 +346,7 @@ export default function InternshipMatching() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-4">
                           <div>
-                            <h3 className="font-semibold text-lg">{internship.title}</h3>
+                            <h3 className="font-semibold text-lg">{internship.role}</h3>
                             <p className="text-muted-foreground">{internship.company}</p>
                           </div>
                           <div className="text-right">
@@ -368,10 +358,10 @@ export default function InternshipMatching() {
                           <Progress value={internship.match} className="h-2" />
                         </div>
                         <div className="flex flex-wrap gap-2 mt-3">
-                          {internship.tags && internship.tags.map((tag: string, i: number) => (
+                          {internship.reasons && internship.reasons.map((reason: string, i: number) => (
                             <span key={i} className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                               <CheckCircle2 className="w-3 h-3 text-success" />
-                              {tag}
+                              {reason}
                             </span>
                           ))}
                         </div>

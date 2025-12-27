@@ -170,10 +170,8 @@ export default function Internships() {
           {/* Internship Cards */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {filteredInternships.map((internship, index) => (
-              <Link
+              <div
                 key={internship.id}
-                to={`/internships/${internship.id}`}
-                state={{ job: internship }}
                 className="block animate-fade-in-up"
                 style={{ animationDelay: `${index * 50}ms` }}
               >
@@ -272,7 +270,7 @@ export default function Internships() {
                     </div>
                   </CardContent>
                 </Card>
-              </Link>
+              </div>
             ))}
           </div>
         </>

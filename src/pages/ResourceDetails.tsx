@@ -11,8 +11,10 @@ import {
   FileText,
   ThumbsUp,
   Loader2,
-  Trash2
+  Trash2,
+  Book
 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -261,6 +263,13 @@ export default function ResourceDetails() {
                 <Button className="flex-1 bg-gradient-primary hover:opacity-90" onClick={handleDownload}>
                   <Download className="w-4 h-4 mr-2" />
                   Download File
+                </Button>
+                <Button
+                  className="bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary"
+                  onClick={() => navigate(`/roadmap/${resource.id}`)}
+                >
+                  <Book className="w-4 h-4 mr-2" />
+                  Generate AI Roadmap
                 </Button>
                 <Button variant="outline" size="icon">
                   <Bookmark className="w-4 h-4" />

@@ -1,4 +1,4 @@
-import { useParams, Link, useLocation } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -7,39 +7,39 @@ import { ArrowUpRight } from "lucide-react";
 
 export default function InternshipDetails() {
   const { id } = useParams();
-  const location = useLocation();
 
-  // Get job from state (passed from list) or fallback to mock if direct access (TODO: fetch by ID)
-  const jobData = location.state?.job;
-
-  if (!jobData) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-4">
-        <h2 className="text-2xl font-bold mb-2">Job Not Found</h2>
-        <p className="text-muted-foreground mb-4">We couldn't find the details for this job. It may have expired or the link is invalid.</p>
-        <Link to="/internships">
-          <Button>Browse Internships</Button>
-        </Link>
-      </div>
-    );
-  }
-
-  // Normalize data structure
+  // Mock data - in a real app this would be fetched based on ID
   const job = {
-    title: jobData.title || jobData.role || "Untitled",
-    company: jobData.company || "Unknown Company",
-    location: jobData.location || "Remote",
-    posted: jobData.datePosted ? new Date(jobData.datePosted).toLocaleDateString() : "Recently",
-    type: jobData.employmentType || "Internship",
-    stipend: jobData.salary || "Not disclosed",
-    duration: "Flexible", // API doesn't always provide this
+    title: "Software Engineering Intern",
+    company: "TechCorp Solutions",
+    location: "Bangalore, India",
+    posted: "Posted 2 days ago",
+    type: "Remote",
+    stipend: "₹15k - ₹20k /month",
+    duration: "6 Months",
     start: "Immediate",
-    match: jobData.match || 0,
-    skills: (jobData.tags || []).map((tag: string) => ({ name: tag, match: true })),
-    description: jobData.description || "No description available.",
-    responsibilities: [], // API might not split this out
-    requirements: [], // API might not split this out
-    url: jobData.url || jobData.job_url || "#"
+    match: 85,
+    skills: [
+      { name: "Python", match: true },
+      { name: "React.js", match: true },
+      { name: "Problem Solving", match: true },
+      { name: "Git", match: true },
+      { name: "Docker", match: false },
+    ],
+    description: "TechCorp Solutions is seeking a passionate and driven Software Engineering Intern to join our core development team. As an intern, you will have the opportunity to work on real-world projects, collaborate with senior engineers, and gain hands-on experience in full-stack development. This role is ideal for 3rd or 4th-year B.Tech students looking to bridge the gap between academic theory and industry practice. You will be contributing to our flagship SaaS product used by over 500 enterprises globally.",
+    responsibilities: [
+      "Collaborate with cross-functional teams to design, develop, and ship new features.",
+      "Write clean, maintainable, and efficient code in Python and JavaScript.",
+      "Participate in code reviews and engineering discussions to learn best practices.",
+      "Troubleshoot and debug issues in existing production applications.",
+      "Assist in documentation of technical specifications and system architecture."
+    ],
+    requirements: [
+      "Currently pursuing a B.Tech/B.E. in Computer Science or related field.",
+      "Solid understanding of Data Structures and Algorithms.",
+      "Experience with Git/GitHub and version control workflows.",
+      "Strong problem-solving skills and attention to detail."
+    ]
   };
 
   return (
@@ -171,10 +171,7 @@ export default function InternshipDetails() {
               </div>
 
               <div className="space-y-3 pt-2">
-                <Button
-                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-12 text-base shadow-lg shadow-primary/20"
-                  onClick={() => window.open(job.url, '_blank')}
-                >
+                <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-12 text-base shadow-lg shadow-primary/20">
                   Apply Now <ArrowUpRight className="ml-2 w-4 h-4" />
                 </Button>
                 <Button variant="outline" className="w-full border-primary/20 text-primary hover:bg-primary/10">

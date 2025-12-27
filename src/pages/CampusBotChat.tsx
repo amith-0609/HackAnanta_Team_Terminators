@@ -14,7 +14,6 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { BACKEND_URL } from "@/services/jobsApi";
 
 interface Message {
   id: number;
@@ -25,21 +24,21 @@ interface Message {
 }
 
 const suggestedQuestions = [
-  { icon: Briefcase, text: "Conduct a mock frontend interview" },
-  { icon: BookOpen, text: "Ask me a React interview question" },
-  { icon: Lightbulb, text: "Review my resume for a backend role" },
+  { icon: Briefcase, text: "What internships match my profile?" },
+  { icon: BookOpen, text: "How should I prepare for coding interviews?" },
+  { icon: Lightbulb, text: "What skills should I focus on learning?" },
 ];
 
 const initialMessages: Message[] = [
   {
     id: 1,
-    content: "Hey! 👋 I'm your AI Mock Interviewer. I can help you practice technical interviews, find internships, and discover resources. How can I help you today?",
+    content: "Hey! 👋 I'm CampusBot, your AI campus assistant. I can help you find internships, prepare for interviews, discover resources, and more. How can I help you today?",
     sender: "bot",
     timestamp: new Date(),
   },
 ];
 
-export default function MockInterviewerChat() {
+export default function CampusBotChat() {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [inputValue, setInputValue] = useState("");
@@ -70,20 +69,14 @@ export default function MockInterviewerChat() {
     setInputValue("");
     setIsTyping(true);
 
-    // ...
-
     try {
-      const response = await fetch(`${BACKEND_URL}/api/chat`, {
+      const response = await fetch("http://localhost:5000/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          message: inputValue,
-          history: messages.map(m => ({
-            sender: m.sender === 'bot' ? 'ai' : 'user',
-            text: m.content
-          }))
+          message: inputValue
         }),
       });
 
@@ -92,7 +85,7 @@ export default function MockInterviewerChat() {
       }
 
       const data = await response.json();
-      const botResponse = data.message;
+      const botResponse = data.reply;
 
       const botMessage: Message = {
         id: Date.now(),
@@ -136,10 +129,10 @@ export default function MockInterviewerChat() {
         </div>
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            AI Mock Interviewer
+            CampusBot
             <Sparkles className="w-5 h-5 text-primary" />
           </h1>
-          <p className="text-sm text-muted-foreground">Your AI interview assistant (Powered by Gemini)</p>
+          <p className="text-sm text-muted-foreground">Your AI campus assistant (Powered by OpenRouter)</p>
         </div>
         <div className="ml-auto flex items-center gap-2">
           <div className="status-indicator bg-success" />

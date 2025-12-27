@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Search,
   Filter,
@@ -10,7 +10,8 @@ import {
   BookOpen,
   Code,
   Lightbulb,
-  Loader2
+  Loader2,
+  Book
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,6 +57,7 @@ interface Resource {
 }
 
 export default function Resources() {
+  const navigate = useNavigate();
   const [resources, setResources] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -187,9 +189,22 @@ export default function Resources() {
                   <Link
                     key={resource.id}
                     to={`/resources/${resource.id}`}
-                    className="block animate-fade-in-up"
+                    className="block animate-fade-in-up relative group"
                     style={{ animationDelay: `${index * 50}ms` }}
                   >
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="absolute top-4 right-4 z-20 h-8 w-8 rounded-full bg-background/80 hover:bg-primary hover:text-primary-foreground shadow-sm transition-colors"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        navigate(`/roadmap/${resource.id}`);
+                      }}
+                      title="Generate AI Roadmap"
+                    >
+                      <Book className="w-4 h-4" />
+                    </Button>
                     <Card className="h-full interactive-card border-border hover:border-primary/30">
                       <CardContent className="p-6">
                         <div className="flex items-start gap-3 mb-4">

@@ -22,7 +22,8 @@ import PostResource from "./pages/PostResource";
 import CampusBotChat from "./pages/CampusBotChat";
 import SkillProfile from "./pages/SkillProfile";
 import NotFound from "./pages/NotFound";
-import MockInterview from "./pages/MockInterview";
+import RoadmapGenerator from "./pages/RoadmapGenerator";
+
 
 const queryClient = new QueryClient();
 
@@ -57,7 +58,8 @@ const App = () => {
                 <Route path="/resources/:id" element={<ProtectedRoute><DashboardLayout><ResourceDetails /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/chat" element={<ProtectedRoute><DashboardLayout><CampusBotChat /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/profile" element={<ProtectedRoute><DashboardLayout><SkillProfile /></DashboardLayout></ProtectedRoute>} />
-                <Route path="/interview" element={<ProtectedRoute><DashboardLayout><MockInterview /></DashboardLayout></ProtectedRoute>} />
+                <Route path="/roadmap/:resourceId" element={<ProtectedRoute><DashboardLayout><RoadmapGenerator /></DashboardLayout></ProtectedRoute>} />
+
 
                 <Route path="*" element={<NotFound />} />
               </Routes>
