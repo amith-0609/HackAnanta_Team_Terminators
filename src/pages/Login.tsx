@@ -42,7 +42,7 @@ export default function Login() {
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground">
               <Rocket className="w-5 h-5 fill-current" />
             </div>
-            CampusShare
+            SparkShare
           </Link>
           <div className="flex items-center gap-2 text-sm">
             <span className="text-muted-foreground">Don't have an account?</span>
@@ -130,7 +130,7 @@ export default function Login() {
           <CardFooter className="bg-muted/30 py-4 flex justify-center">
             <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              Secure connection via CampusShare
+              Secure connection via SparkShare
             </div>
           </CardFooter>
         </Card>
@@ -138,7 +138,7 @@ export default function Login() {
 
       {/* Footer */}
       <footer className="py-6 text-center text-xs text-muted-foreground">
-        <p>© 2024 CampusShare. All rights reserved.</p>
+        <p>© 2024 SparkShare. All rights reserved.</p>
         <div className="flex justify-center gap-4 mt-2">
           <a href="#" className="hover:text-foreground">Privacy</a>
           <a href="#" className="hover:text-foreground">Terms</a>

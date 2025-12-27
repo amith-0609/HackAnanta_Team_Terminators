@@ -13,7 +13,7 @@ export default function Landing() {
                         <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/20">
                             <Rocket className="w-5 h-5 fill-current" />
                         </div>
-                        CampusShare
+                        SparkShare
                     </div>
 
                     <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-muted-foreground">
@@ -45,7 +45,7 @@ export default function Landing() {
 
                             <div className="space-y-2">
                                 <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-foreground leading-tight">
-                                    CampusShare
+                                    SparkShare
                                 </h1>
                                 <h2 className="text-3xl md:text-4xl font-bold text-primary">
                                     Learn • Share • Grow
@@ -173,7 +173,7 @@ export default function Landing() {
                         <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground">
                             <Rocket className="w-5 h-5 fill-current" />
                         </div>
-                        CampusShare
+                        SparkShare
                     </div>
 
                     <div className="flex justify-center gap-8 text-sm text-muted-foreground mb-8">
@@ -193,7 +193,7 @@ export default function Landing() {
                     </div>
 
                     <p className="text-xs text-muted-foreground">
-                        © 2024 CampusShare. All rights reserved.
+                        © 2024 SparkShare. All rights reserved.
                     </p>
                 </div>
             </footer>

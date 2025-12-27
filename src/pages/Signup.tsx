@@ -29,7 +29,7 @@ export default function Signup() {
                         <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground">
                             <Rocket className="w-5 h-5 fill-current" />
                         </div>
-                        CampusShare
+                        SparkShare
                     </Link>
                     <div className="flex items-center gap-2 text-sm">
                         <Link to="/login">
@@ -64,7 +64,7 @@ export default function Signup() {
                                     {[1, 2, 3, 4, 5].map(i => <span key={i}>★</span>)}
                                 </div>
                                 <p className="text-white font-medium italic mb-4">
-                                    "CampusShare helped me find my summer internship within a week!"
+                                    "SparkShare helped me find my summer internship within a week!"
                                 </p>
                                 <div className="flex items-center gap-3">
                                     <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center font-bold">S</div>

@@ -304,7 +304,7 @@ export default function ResourceDetails() {
                 </Avatar>
                 <div>
                   <p className="font-semibold">{resource.userName || "Anonymous"}</p>
-                  <p className="text-sm text-muted-foreground">Student at CampusShare</p>
+                  <p className="text-sm text-muted-foreground">Student at SparkShare</p>
                 </div>
               </div>
               <Button variant="outline" className="w-full mt-4">

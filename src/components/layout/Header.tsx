@@ -55,7 +55,7 @@ export function Header({ onMenuClick }: HeaderProps) {
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20">
             <span className="text-white">C</span>
           </div>
-          <span className="text-foreground hidden sm:block">CampusShare</span>
+          <span className="text-foreground hidden sm:block">SparkShare</span>
         </Link>
 
         {/* Desktop Navigation */}
